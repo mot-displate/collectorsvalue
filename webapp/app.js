@@ -4,8 +4,16 @@
  * Renders grid, search, sort, filter, market insights.
  */
 
-const CSV_PATH = 'data/displates.csv';
-const LE_IMAGES_JSON = 'data/le-images.json';
+// Base path for GitHub Pages (e.g. /collectorsvalue) or '' when served from root
+const BASE = (function () {
+  if (typeof location === 'undefined') return '';
+  const p = location.pathname.replace(/\/$/, '') || '';
+  if (!p || p === '/') return '';
+  const parts = p.split('/').filter(Boolean);
+  return parts.length > 1 ? '/' + parts.slice(0, -1).join('/') : '/' + parts[0];
+})();
+const CSV_PATH = BASE ? BASE + '/data/displates.csv' : 'data/displates.csv';
+const LE_IMAGES_JSON = BASE ? BASE + '/data/le-images.json' : 'data/le-images.json';
 const DISPLATE_API_URL = 'https://sapi.displate.com/artworks/limited';
 
 // CSV parse that handles quoted fields with commas
@@ -138,40 +146,43 @@ function objectToImageMap(data) {
 }
 
 async function fetchDisplateApiImageMap() {
+  // 1. Try live API first (works locally; CORS blocks on GitHub Pages)
+  try {
+    const res = await fetch(DISPLATE_API_URL);
+    if (res.ok) {
+      const json = await res.json();
+      const list = json.data || [];
+      const byId = new Map();
+      const byTitle = new Map();
+      list.forEach((item) => {
+        const imageUrl =
+          item.images?.main?.url ||
+          item.image?.url ||
+          item.thumbnail?.url ||
+          null;
+        const leUrl = item.url
+          ? `https://displate.com${item.url}`
+          : `https://displate.com/limited-edition/displate/${item.itemCollectionId}`;
+        const entry = { imageUrl, leUrl, title: item.title || '' };
+        if (item.itemCollectionId != null) {
+          byId.set(Number(item.itemCollectionId), entry);
+        }
+        if (item.id != null) {
+          byId.set(Number(item.id), entry);
+        }
+        const t = normalizeTitle(item.title);
+        if (t) byTitle.set(t, entry);
+      });
+      return { byId, byTitle };
+    }
+  } catch (_) {}
+  // 2. Fallback: static JSON (same-origin, works on GitHub Pages with BASE path)
   try {
     const res = await fetch(LE_IMAGES_JSON);
     if (res.ok) {
       const data = await res.json();
       return objectToImageMap(data);
     }
-  } catch (_) {}
-  try {
-    const res = await fetch(DISPLATE_API_URL);
-    if (!res.ok) return objectToImageMap({});
-    const json = await res.json();
-    const list = json.data || [];
-    const byId = new Map();
-    const byTitle = new Map();
-    list.forEach((item) => {
-      const imageUrl =
-        item.images?.main?.url ||
-        item.image?.url ||
-        item.thumbnail?.url ||
-        null;
-      const leUrl = item.url
-        ? `https://displate.com${item.url}`
-        : `https://displate.com/limited-edition/displate/${item.itemCollectionId}`;
-      const entry = { imageUrl, leUrl, title: item.title || '' };
-      if (item.itemCollectionId != null) {
-        byId.set(Number(item.itemCollectionId), entry);
-      }
-      if (item.id != null) {
-        byId.set(Number(item.id), entry);
-      }
-      const t = normalizeTitle(item.title);
-      if (t) byTitle.set(t, entry);
-    });
-    return { byId, byTitle };
   } catch (e) {
     console.warn('Image data load failed (using placeholders):', e);
   }
