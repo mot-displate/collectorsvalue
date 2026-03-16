@@ -272,8 +272,8 @@ function mergeDisplateApiIntoRecords(records, apiMap) {
 
 // ---------- Routing ----------
 function getHashRoute() {
-  const hash = (location.hash || '').replace(/^#/, '');
-  const m = hash.match(/^\/le\/(\d+)$/);
+  const hash = (location.hash || '').replace(/^#/, '').replace(/^\/?/, '');
+  const m = hash.match(/^le\/(\d+)/);
   if (m) return { view: 'product', id: m[1] };
   return { view: 'catalog' };
 }
@@ -283,6 +283,7 @@ function showView(view) {
   const productEl = document.getElementById('product-view');
   if (catalogEl) catalogEl.hidden = view !== 'catalog';
   if (productEl) productEl.hidden = view !== 'product';
+  if (view === 'product') window.scrollTo(0, 0);
 }
 
 // ---------- Catalog: insights (CSV mode) or API summary ----------
@@ -351,6 +352,9 @@ function renderCards(records) {
   if (countEl) countEl.textContent = `${records.length} limited edition${records.length !== 1 ? 's' : ''}`;
 
   records.forEach((r) => {
+    const id = r.itemCollectionId != null ? r.itemCollectionId : r.id;
+    const hasPdp = id != null && id !== '';
+
     const li = document.createElement('div');
     li.className = 'card';
 
@@ -370,9 +374,9 @@ function renderCards(records) {
         link.className = 'card-image-link';
         link.appendChild(img);
         imgWrap.appendChild(link);
-      } else if (!USE_CSV) {
+      } else if (!USE_CSV && hasPdp) {
         const link = document.createElement('a');
-        link.href = `#/le/${r.itemCollectionId}`;
+        link.href = `#/le/${id}`;
         link.className = 'card-image-link';
         link.appendChild(img);
         imgWrap.appendChild(link);
@@ -382,16 +386,16 @@ function renderCards(records) {
     } else {
       const placeholder = document.createElement('div');
       placeholder.className = 'card-placeholder';
-      placeholder.textContent = r.name || `LE #${r.itemCollectionId || r.id}`;
+      placeholder.textContent = r.name || `LE #${id}`;
       imgWrap.appendChild(placeholder);
     }
     li.appendChild(imgWrap);
 
     const body = document.createElement('div');
     body.className = 'card-body';
-    if (!USE_CSV) {
+    if (!USE_CSV && hasPdp) {
       const cardLink = document.createElement('a');
-      cardLink.href = `#/le/${r.itemCollectionId}`;
+      cardLink.href = `#/le/${id}`;
       cardLink.className = 'card-link-wrap';
       const title = document.createElement('h3');
       title.className = 'card-title';
@@ -405,7 +409,20 @@ function renderCards(records) {
         : edition && edition.size ? `Edition of ${edition.size}` : '';
       meta.textContent = [edition && edition.type, avail].filter(Boolean).join(' · ');
       cardLink.appendChild(meta);
+      const cta = document.createElement('span');
+      cta.className = 'card-cta';
+      cta.textContent = 'View resale data →';
+      cardLink.appendChild(cta);
       body.appendChild(cardLink);
+    } else if (!USE_CSV && !hasPdp) {
+      const title = document.createElement('h3');
+      title.className = 'card-title';
+      title.textContent = r.name || r.title || 'Limited Edition';
+      body.appendChild(title);
+      const meta = document.createElement('p');
+      meta.className = 'card-meta';
+      meta.textContent = r.edition && r.edition.size ? `Edition of ${r.edition.size}` : '';
+      body.appendChild(meta);
     } else {
       const title = document.createElement('h3');
       title.className = 'card-title';
@@ -440,8 +457,12 @@ function renderProductPage(id) {
   if (!le) {
     article.innerHTML = '<p class="sales-empty">Limited edition not found.</p>';
     showView('product');
+    if (typeof document !== 'undefined' && document.title) document.title = 'Not found | Displate LE Value';
     return;
   }
+
+  const pageTitle = (le.name || le.title || 'Limited Edition') + ' | Displate LE Value';
+  if (typeof document !== 'undefined' && document.title) document.title = pageTitle;
 
   const sales = getSalesForLe(le);
   const edition = le.edition || {};
@@ -519,6 +540,7 @@ function route() {
     renderProductPage(id);
   } else {
     showView('catalog');
+    if (typeof document !== 'undefined' && document.title) document.title = 'Displate LE Value | Collect, Track & Share Limited Editions';
     applySearchSortFilter();
   }
 }

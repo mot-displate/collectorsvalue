@@ -344,6 +344,14 @@ main {
   height: 100%;
 }
 .card-link-wrap:hover .card-title { color: var(--blue-highlight); }
+.card-cta {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.card-link-wrap:hover .card-cta { text-decoration: underline; }
 
 .result-count {
   margin-top: 1.5rem;
@@ -372,12 +380,16 @@ main {
   margin-bottom: 0;
 }
 
-/* ========== Product page ========== */
+/* ========== Product page (PDP – MetalPosters.net style) ========== */
 .product-view {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1.5rem;
   padding-bottom: 4rem;
+  min-height: 60vh;
+}
+.product-view:not([hidden]) {
+  display: block;
 }
 
 .product-back {
@@ -453,20 +465,24 @@ main {
   background: var(--blue-deep);
 }
 
-/* eBay / Secondary market section */
+/* eBay / Secondary market section – prominent like MetalPosters.net */
 .sales-section {
-  margin-top: 2.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--eerie-black);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 .sales-section h2 {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  margin: 0 0 1rem;
+  margin: 0 0 1.25rem;
   color: var(--white);
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .sales-section h2::before {
   content: '';
