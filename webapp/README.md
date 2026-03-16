@@ -4,13 +4,9 @@ A small web app that showcases **Displate limited editions** value to collectors
 
 ## Features
 
-- **Home** hero and **Market Insights** (Last Sales, Trending Highs, Most Wanted)
-- **Search** by title, artist, or brand
-- **Sort** by Latest, Brand/Artist, High Price, or Most Resales
-- **Filter** by artist
-- **Grid** of limited editions from `data/displates.csv` (market data) and **images** from the **Displate API** (same as `displate-inventory-extension`: `https://sapi.displate.com/artworks/limited`)
-- Cards show images when the CSV row matches an API item (by ID or by title); otherwise a text placeholder is shown. Clicking the image opens the LE page on Displate.
-- Dark theme and typography aligned with the Displate design system
+- **API-driven catalog** (default): LEs from the **Displate API** (same as `displate-inventory-extension`). **Product page** per LE (`#/le/123`) with image, edition info, and **eBay / secondary market** section (resales, high/avg/low, last sale, price-range bar). Sales data is merged from the optional CSV when available.
+- **Feature flag `USE_CSV`** in `app.js`: set to `true` to restore the original CSV-driven grid and insights; CSV code is kept but unused when `false`.
+- **Search**, **Sort**, **Filter**. Dark theme (Displate design system).
 
 ## Run locally
 

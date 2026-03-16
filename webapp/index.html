@@ -11,7 +11,9 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main>
+  <main id="app-root">
+    <!-- Catalog view (grid) -->
+    <div id="catalog-view">
     <section class="hero">
       <div class="hero-content">
         <h1>Collect, Track, Share</h1>
@@ -72,6 +74,13 @@
       </div>
       <p class="result-count" id="result-count"></p>
     </section>
+    </div>
+
+    <!-- Product page view (single LE + eBay sales) -->
+    <div id="product-view" class="product-view" hidden>
+      <div class="product-back"><a href="#" id="product-back-link">← All limited editions</a></div>
+      <article id="product-article" class="product-article"></article>
+    </div>
   </main>
 
   <footer class="site-footer">
