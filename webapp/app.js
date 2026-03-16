@@ -17,10 +17,31 @@ const CSV_PATH = BASE ? BASE + '/data/displates.csv' : 'data/displates.csv';
 const LE_IMAGES_JSON = BASE ? BASE + '/data/le-images.json' : 'data/le-images.json';
 const DISPLATE_API_URL = 'https://sapi.displate.com/artworks/limited';
 
+// eBay sold-items API proxy (RapidAPI via our serverless /api/ebay-sold). Set window.__EBAY_API_BASE__ if API is on another origin (e.g. Vercel).
+const EBAY_API_BASE = (typeof window !== 'undefined' && window.__EBAY_API_BASE__) || '';
+
 let allRecords = [];
 let filteredRecords = [];
 let salesByLeId = new Map();
 let salesByTitle = new Map();
+
+async function fetchEbaySold(keywords, maxSearchResults = 60) {
+  const url = (EBAY_API_BASE || '') + '/api/ebay-sold';
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        keywords: String(keywords || '').trim() || 'Displate',
+        max_search_results: [60, 120, 240].includes(maxSearchResults) ? maxSearchResults : 60
+      })
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
 
 function normalizeTitle(s) {
   return (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -524,9 +545,45 @@ function renderProductPage(id) {
     `;
   }
 
-  html += '</section></div>';
+  html += `
+        <div id="ebay-live-block" class="sales-live-ebay" aria-live="polite">
+          <h3>Live eBay sold items</h3>
+          <p class="sales-live-ebay__loading">Loading…</p>
+        </div>
+      </section></div>`;
   article.innerHTML = html;
   showView('product');
+
+  const keywords = 'Displate ' + (le.name || le.title || '');
+  (async function () {
+    const block = document.getElementById('ebay-live-block');
+    if (!block) return;
+    const data = await fetchEbaySold(keywords);
+    const loading = block.querySelector('.sales-live-ebay__loading');
+    const wrap = document.createElement('div');
+    wrap.className = 'sales-live-ebay__content';
+    if (data && data.success && (data.results > 0 || data.average_price != null)) {
+      const products = (data.products || []).slice(0, 8);
+      let listHtml = '';
+      if (data.results != null) listHtml += `<p class="sales-live-ebay__stats">${data.results} sold · Avg $${Number(data.average_price || 0).toFixed(2)} · Low $${Number(data.min_price || 0).toFixed(2)} · High $${Number(data.max_price || 0).toFixed(2)}</p>`;
+      if (products.length) {
+        listHtml += '<ul class="sales-live-ebay__list">';
+        products.forEach(function (p) {
+          const link = (p && p.link) ? p.link : '#';
+          const title = (p && p.title) ? String(p.title).replace(/</g, '&lt;').substring(0, 80) : 'Listing';
+          const price = (p && p.sale_price != null) ? '$' + Number(p.sale_price).toFixed(2) : '—';
+          const date = (p && p.date_sold) ? String(p.date_sold) : '';
+          listHtml += `<li><a href="${link}" target="_blank" rel="noopener noreferrer">${title}</a> <span class="sales-live-ebay__price">${price}</span>${date ? ` <span class="sales-live-ebay__date">${date}</span>` : ''}</li>`;
+        });
+        listHtml += '</ul>';
+      }
+      wrap.innerHTML = listHtml;
+    } else {
+      wrap.innerHTML = '<p class="sales-empty">Live eBay data not available (API not configured or no results).</p>';
+    }
+    if (loading) loading.remove();
+    block.appendChild(wrap);
+  })();
 }
 
 function updateLocalTime() {

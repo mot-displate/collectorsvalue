@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "buildCommand": null,
+  "outputDirectory": "webapp",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ]
+}

@@ -33,6 +33,30 @@ Showcase **Displate limited editions** value to collectors: a small web app (des
      **https://mot-displate.github.io/Metalposters/**  
      (or `https://mot-displate.github.io/<your-repo-name>/`).
 
+## Live eBay data on product pages
+
+Product pages can show **live eBay sold items** (count, average/min/max price, recent listings) via the [eBay sold-items API on RapidAPI](https://github.com/colindaniels/eBay-sold-items-documentation). The app uses a small **serverless proxy** so the RapidAPI key is never exposed in the browser.
+
+1. **Get a RapidAPI key**  
+   Subscribe to the “eBay Average Selling Price” (or sold items) API on [RapidAPI](https://rapidapi.com/) and copy your key.
+
+2. **Deploy the API**  
+   Deploy this repo to **Vercel** (or any host that runs the `api/` serverless functions). In the project’s **Environment variables**, set:
+   - `RAPIDAPI_KEY` = your RapidAPI key  
+
+   The proxy is at `POST /api/ebay-sold` (see `api/ebay-sold.js`).
+
+3. **Use it from the webapp**  
+   - If the **webapp is served from the same origin** as the API (e.g. full app deployed on Vercel), nothing else is needed; the app will call `/api/ebay-sold` on the same host.  
+   - If the app is on **GitHub Pages** (or another origin), set the API base URL before the app loads, e.g. in `index.html`:
+     ```html
+     <script>window.__EBAY_API_BASE__ = 'https://your-vercel-project.vercel.app';</script>
+     <script src="app.js"></script>
+     ```
+     Then the app will request `https://your-vercel-project.vercel.app/api/ebay-sold`.
+
+Without the API (or if the key is missing), the product page still shows CSV-based resale data when available, and the “Live eBay sold items” section will show “Live eBay data not available”.
+
 ## Run the webapp locally
 
 ```bash

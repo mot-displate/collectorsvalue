@@ -565,6 +565,55 @@ main {
   color: var(--text-muted);
 }
 
+.sales-live-ebay {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.sales-live-ebay h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.sales-live-ebay__loading {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.sales-live-ebay__stats {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.sales-live-ebay__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sales-live-ebay__list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.sales-live-ebay__list li:last-child {
+  border-bottom: none;
+}
+.sales-live-ebay__list a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.sales-live-ebay__list a:hover {
+  text-decoration: underline;
+}
+.sales-live-ebay__price {
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+.sales-live-ebay__date {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-left: 0.35rem;
+}
+
 @media (max-width: 640px) {
   .header-inner {
     flex-direction: column;
