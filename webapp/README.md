@@ -37,7 +37,7 @@ Then open **http://localhost:8080**.
 ## Data
 
 - **CSV**: `data/displates.csv` is a copy of the project’s **Displate Limited Edition Information - Displates.csv**. The app reads: ID, Release Date, Name, Quantity, Cost, Artist, Number, # Resales, High/Avg/Low Price, Total Sales, Last Sale.
-- **Images**: Fetched from `https://sapi.displate.com/artworks/limited` (same API used by `displate-inventory-extension`). Records are matched by CSV ID or by title; when a match is found, the card shows the API image and links to the LE page on Displate. If the API request is blocked (e.g. by CORS in some environments), the grid still works with text placeholders.
+- **Images**: Loaded from **`data/le-images.json`** (same-origin, so images work on GitHub Pages). That file is a snapshot from `https://sapi.displate.com/artworks/limited`. To refresh it, run from the repo root: `node webapp/scripts/fetch-le-images.js`, then commit the updated `webapp/data/le-images.json`.
 
 ## Disclaimer
 

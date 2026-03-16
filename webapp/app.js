@@ -5,6 +5,7 @@
  */
 
 const CSV_PATH = 'data/displates.csv';
+const LE_IMAGES_JSON = 'data/le-images.json';
 const DISPLATE_API_URL = 'https://sapi.displate.com/artworks/limited';
 
 // CSV parse that handles quoted fields with commas
@@ -111,8 +112,8 @@ function buildRecords(rows) {
 }
 
 /**
- * Fetch limited editions from Displate API (same endpoint as displate-inventory-extension).
- * Returns { byId: Map(id -> { imageUrl, leUrl, title }), byTitle: Map(normalizedTitle -> entry) }.
+ * Image map: byId / byTitle -> { imageUrl, leUrl, title }.
+ * Load from static JSON first (no CORS on GitHub Pages); fall back to live API for local dev.
  */
 function normalizeTitle(s) {
   return (s || '')
@@ -121,27 +122,46 @@ function normalizeTitle(s) {
     .trim();
 }
 
-async function fetchDisplateApiImageMap() {
+function objectToImageMap(data) {
   const byId = new Map();
   const byTitle = new Map();
+  if (data.byId) {
+    Object.entries(data.byId).forEach(([k, v]) => {
+      byId.set(k, v);
+      if (/^\d+$/.test(k)) byId.set(Number(k), v);
+    });
+  }
+  if (data.byTitle) {
+    Object.entries(data.byTitle).forEach(([k, v]) => byTitle.set(k, v));
+  }
+  return { byId, byTitle };
+}
+
+async function fetchDisplateApiImageMap() {
+  try {
+    const res = await fetch(LE_IMAGES_JSON);
+    if (res.ok) {
+      const data = await res.json();
+      return objectToImageMap(data);
+    }
+  } catch (_) {}
   try {
     const res = await fetch(DISPLATE_API_URL);
-    if (!res.ok) return { byId, byTitle };
+    if (!res.ok) return objectToImageMap({});
     const json = await res.json();
-    const data = json.data || [];
-    data.forEach((item) => {
+    const list = json.data || [];
+    const byId = new Map();
+    const byTitle = new Map();
+    list.forEach((item) => {
       const imageUrl =
         item.images?.main?.url ||
         item.image?.url ||
-        item.thumbnail?.url;
+        item.thumbnail?.url ||
+        null;
       const leUrl = item.url
         ? `https://displate.com${item.url}`
         : `https://displate.com/limited-edition/displate/${item.itemCollectionId}`;
-      const entry = {
-        imageUrl: imageUrl || null,
-        leUrl,
-        title: item.title || '',
-      };
+      const entry = { imageUrl, leUrl, title: item.title || '' };
       if (item.itemCollectionId != null) {
         byId.set(Number(item.itemCollectionId), entry);
       }
@@ -151,10 +171,11 @@ async function fetchDisplateApiImageMap() {
       const t = normalizeTitle(item.title);
       if (t) byTitle.set(t, entry);
     });
+    return { byId, byTitle };
   } catch (e) {
-    console.warn('Displate API fetch failed (images may be missing):', e);
+    console.warn('Image data load failed (using placeholders):', e);
   }
-  return { byId, byTitle };
+  return objectToImageMap({});
 }
 
 let allRecords = [];

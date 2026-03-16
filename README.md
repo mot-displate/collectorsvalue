@@ -15,21 +15,16 @@ Showcase **Displate limited editions** value to collectors: a small web app (des
    - Name it e.g. `Metalposters` or `displate-le-value`.  
    - Do **not** add a README, .gitignore, or license (this repo already has them).
 
-2. **Push this project** from your machine:
+2. **Push this project** from your machine (repo is already initialized and committed):
 
    ```bash
    cd /Users/nicola.paganelli/Desktop/Apps/Metalposters
 
-   git init
-   git add .
-   git commit -m "Initial commit: webapp + displate-inventory-extension"
-
-   git branch -M main
    git remote add origin https://github.com/mot-displate/Metalposters.git
    git push -u origin main
    ```
 
-   (Replace `Metalposters` with your repo name if different.)
+   Replace `Metalposters` with your actual repo name if you chose a different one (e.g. `displate-le-value`).
 
 3. **Enable GitHub Pages**  
    - Repo **Settings** → **Pages**.  
