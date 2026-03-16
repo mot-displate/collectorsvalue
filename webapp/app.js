@@ -208,6 +208,55 @@ function buildRecordsFromCSV(rows) {
   return records;
 }
 
+/** Merge CSV metadata into API records so we have releaseDate, artist, resales, etc. for sorting, filter, and card display. */
+function mergeCSVIntoApiRecords(apiRecords, csvRecords) {
+  const byId = new Map();
+  const byTitle = new Map();
+  csvRecords.forEach((r) => {
+    if (r.id != null) byId.set(Number(r.id), r);
+    if (r.name) byTitle.set(normalizeTitle(r.name), r);
+  });
+  apiRecords.forEach((rec) => {
+    const id = rec.itemCollectionId != null ? Number(rec.itemCollectionId) : null;
+    const name = rec.name || rec.title || '';
+    const csv = (id != null && byId.get(id)) || (name && byTitle.get(normalizeTitle(name))) || null;
+    if (!csv) return;
+    rec.releaseDate = csv.releaseDate;
+    rec.artist = csv.artist;
+    rec.number = csv.number;
+    rec.quantity = csv.quantity;
+    rec.cost = csv.cost;
+    rec.resales = csv.resales;
+    rec.highPrice = csv.highPrice;
+    rec.highPriceNum = csv.highPriceNum;
+    rec.avgPrice = csv.avgPrice;
+    rec.avgPriceNum = csv.avgPriceNum;
+    rec.lowPrice = csv.lowPrice;
+    rec.lowPriceNum = csv.lowPriceNum;
+    rec.totalSales = csv.totalSales;
+    rec.lastSale = csv.lastSale;
+    rec.searchText = `${name} ${csv.artist || ''} ${csv.number || ''}`.toLowerCase();
+  });
+}
+
+function fillSalesMapsFromCSVRecords(csvRecords) {
+  csvRecords.forEach((r) => {
+    const sales = {
+      resales: r.resales,
+      highPrice: r.highPrice,
+      highPriceNum: r.highPriceNum,
+      avgPrice: r.avgPrice,
+      avgPriceNum: r.avgPriceNum,
+      lowPrice: r.lowPrice,
+      lowPriceNum: r.lowPriceNum,
+      totalSales: r.totalSales,
+      lastSale: r.lastSale,
+    };
+    if (r.id != null) salesByLeId.set(Number(r.id), sales);
+    if (r.name) salesByTitle.set(normalizeTitle(r.name), sales);
+  });
+}
+
 async function loadCSVForSales() {
   try {
     const res = await fetch(CSV_PATH);
@@ -215,21 +264,7 @@ async function loadCSVForSales() {
     const text = await res.text();
     const rows = parseCSV(text);
     const records = buildRecordsFromCSV(rows);
-    records.forEach((r) => {
-      const sales = {
-        resales: r.resales,
-        highPrice: r.highPrice,
-        highPriceNum: r.highPriceNum,
-        avgPrice: r.avgPrice,
-        avgPriceNum: r.avgPriceNum,
-        lowPrice: r.lowPrice,
-        lowPriceNum: r.lowPriceNum,
-        totalSales: r.totalSales,
-        lastSale: r.lastSale,
-      };
-      if (r.id != null) salesByLeId.set(Number(r.id), sales);
-      if (r.name) salesByTitle.set(normalizeTitle(r.name), sales);
-    });
+    fillSalesMapsFromCSVRecords(records);
   } catch (_) {}
 }
 
@@ -314,12 +349,12 @@ function updateMarketInsights() {
   const mostWantedEl = document.getElementById('insight-most-wanted');
   if (!lastSalesEl) return;
 
-  if (USE_CSV && allRecords.length > 0) {
-    const withResales = allRecords.filter((r) => r.resales > 0);
+  const withResales = allRecords.filter((r) => r.resales > 0);
+  if (allRecords.length > 0 && withResales.length > 0) {
     const byLastSale = [...withResales].sort((a, b) => (parseDate(b.lastSale) || 0) - (parseDate(a.lastSale) || 0));
     const byHigh = [...withResales].sort((a, b) => (b.highPriceNum || 0) - (a.highPriceNum || 0));
     const byResales = [...withResales].sort((a, b) => b.resales - a.resales);
-    lastSalesEl.textContent = withResales.length > 0 ? `${byLastSale.length} with sales` : '—';
+    lastSalesEl.textContent = `${byLastSale.length} with sales`;
     if (trendingEl) trendingEl.textContent = byHigh[0] ? formatPrice(byHigh[0].highPrice) : '—';
     if (mostWantedEl) mostWantedEl.textContent = byResales[0] ? `${byResales[0].name} (${byResales[0].resales})` : '—';
   } else {
@@ -414,13 +449,40 @@ function renderCards(records) {
 
     const body = document.createElement('div');
     body.className = 'card-body';
-    if (!USE_CSV && hasPdp) {
+    const hasMergedStats = r.artist || r.resales > 0 || r.highPrice || r.lastSale;
+    if (hasMergedStats) {
+      const wrap = hasPdp ? document.createElement('a') : document.createElement('div');
+      if (hasPdp) { wrap.href = `#/le/${id}`; wrap.className = 'card-link-wrap'; }
+      const title = document.createElement('h3');
+      title.className = 'card-title';
+      title.textContent = r.name || r.title || `Limited Edition ${r.number || ''}`.trim();
+      wrap.appendChild(title);
+      const meta = document.createElement('p');
+      meta.className = 'card-meta';
+      meta.textContent = [r.artist, r.number, r.quantity ? `Qty ${r.quantity}` : ''].filter(Boolean).join(' · ');
+      wrap.appendChild(meta);
+      const stats = document.createElement('div');
+      stats.className = 'card-stats';
+      if (r.cost) { const s = document.createElement('span'); s.className = 'card-stat'; s.innerHTML = `MSRP <strong>${r.cost}</strong>`; stats.appendChild(s); }
+      if (r.highPrice) { const s = document.createElement('span'); s.className = 'card-stat high'; s.innerHTML = `High <strong>${r.highPrice}</strong>`; stats.appendChild(s); }
+      if (r.avgPrice) { const s = document.createElement('span'); s.className = 'card-stat'; s.innerHTML = `Avg <strong>${r.avgPrice}</strong>`; stats.appendChild(s); }
+      if (r.resales > 0) { const s = document.createElement('span'); s.className = 'card-stat'; s.innerHTML = `<strong>${r.resales}</strong> resales`; stats.appendChild(s); }
+      if (r.lastSale) { const s = document.createElement('span'); s.className = 'card-stat'; s.textContent = `Last: ${r.lastSale}`; stats.appendChild(s); }
+      wrap.appendChild(stats);
+      if (hasPdp) {
+        const cta = document.createElement('span');
+        cta.className = 'card-cta';
+        cta.textContent = 'View resale data →';
+        wrap.appendChild(cta);
+      }
+      body.appendChild(wrap);
+    } else if (hasPdp) {
       const cardLink = document.createElement('a');
       cardLink.href = `#/le/${id}`;
       cardLink.className = 'card-link-wrap';
       const title = document.createElement('h3');
       title.className = 'card-title';
-      title.textContent = r.name || r.title || `Limited Edition`;
+      title.textContent = r.name || r.title || 'Limited Edition';
       cardLink.appendChild(title);
       const meta = document.createElement('p');
       meta.className = 'card-meta';
@@ -435,7 +497,7 @@ function renderCards(records) {
       cta.textContent = 'View resale data →';
       cardLink.appendChild(cta);
       body.appendChild(cardLink);
-    } else if (!USE_CSV && !hasPdp) {
+    } else {
       const title = document.createElement('h3');
       title.className = 'card-title';
       title.textContent = r.name || r.title || 'Limited Edition';
@@ -444,23 +506,6 @@ function renderCards(records) {
       meta.className = 'card-meta';
       meta.textContent = r.edition && r.edition.size ? `Edition of ${r.edition.size}` : '';
       body.appendChild(meta);
-    } else {
-      const title = document.createElement('h3');
-      title.className = 'card-title';
-      title.textContent = r.name || `Limited Edition ${r.number}`;
-      body.appendChild(title);
-      const meta = document.createElement('p');
-      meta.className = 'card-meta';
-      meta.textContent = [r.artist, r.number, r.quantity ? `Qty ${r.quantity}` : ''].filter(Boolean).join(' · ');
-      body.appendChild(meta);
-      const stats = document.createElement('div');
-      stats.className = 'card-stats';
-      if (r.cost) { const s = document.createElement('span'); s.className = 'card-stat'; s.innerHTML = `MSRP <strong>${r.cost}</strong>`; stats.appendChild(s); }
-      if (r.highPrice) { const s = document.createElement('span'); s.className = 'card-stat high'; s.innerHTML = `High <strong>${r.highPrice}</strong>`; stats.appendChild(s); }
-      if (r.avgPrice) { const s = document.createElement('span'); s.className = 'card-stat'; s.innerHTML = `Avg <strong>${r.avgPrice}</strong>`; stats.appendChild(s); }
-      if (r.resales > 0) { const s = document.createElement('span'); s.className = 'card-stat'; s.innerHTML = `<strong>${r.resales}</strong> resales`; stats.appendChild(s); }
-      if (r.lastSale) { const s = document.createElement('span'); s.className = 'card-stat'; s.textContent = `Last: ${r.lastSale}`; stats.appendChild(s); }
-      body.appendChild(stats);
     }
     li.appendChild(body);
     grid.appendChild(li);
@@ -614,10 +659,22 @@ async function loadData() {
     } else {
       const apiList = await fetchDisplateApiFull();
       allRecords = buildRecordsFromApi(apiList);
-      await loadCSVForSales();
+      try {
+        const csvRes = await fetch(CSV_PATH);
+        if (csvRes.ok) {
+          const rows = parseCSV(await csvRes.text());
+          const csvRecords = buildRecordsFromCSV(rows);
+          mergeCSVIntoApiRecords(allRecords, csvRecords);
+          fillSalesMapsFromCSVRecords(csvRecords);
+        } else {
+          await loadCSVForSales();
+        }
+      } catch (_) {
+        await loadCSVForSales();
+      }
     }
     updateMarketInsights();
-    if (USE_CSV) populateArtistFilter();
+    populateArtistFilter();
     filteredRecords = [...allRecords];
     route();
   } catch (e) {
